@@ -1,4 +1,4 @@
-console.log('index.js working')
+console.log('index.js working');
 let regex = /http[s]?:\/\/[\w.,]+\//gi;
 
 let button = document.querySelector('button');
@@ -10,7 +10,9 @@ let h1 = document.querySelector('h1')
 const p = document.querySelector('p');
 const indexChannel = new BroadcastChannel('testChannel');
 
+textArea.addEventListener('change', textAreaChange);
 document.addEventListener('DOMContentLoaded', load);
+setInterval(checkEndTime, 3000);
 
 async function load(e) {
     let { parContent, btn, textAreaStyle, urls, endTimeOfBlock } = await chrome.storage.session.get(['parContent', 'btn', 'textAreaStyle', 'urls', 'endTimeOfBlock'])
@@ -30,32 +32,32 @@ async function load(e) {
         return;
     }
 
-    textArea.value = urls.join('\n');
+    if (typeof urls == 'object') {
+        textArea.value = urls.join('\n');
+    } else {
+        textArea.value = urls;
+    }
+
+    input.value = endTimeOfBlock;
     if (!endTimeOfBlock) {
         input.removeAttribute('disabled');
-        return
+        return;
     }
-    
-    input.value = endTimeOfBlock;
-    input.setAttribute('disabled', true)
+
+    input.setAttribute('disabled', true);
 }
 
 indexChannel.onmessage = async (event) => {
     let data = event.data;
 
     switch (data.reason) {
-        case 'parContent': 
+        case 'parContent':
             let { parContent } = await chrome.storage.session.get(['parContent'])
             p.textContent = parContent;
-        break;
-        case 'timeReset':
-            console.log(data)
-            chrome.storage.session.set({ endTimeOfBlock: null });
-            changeText();
-        break;
-        default: 
+            break;
+        default:
             onsole.log('not working')
-        break;
+            break;
     }
     if (data.reason == 'parContent') {
         let { parContent } = await chrome.storage.session.get(['parContent'])
@@ -74,15 +76,25 @@ function blockSites(e) {
     }
 
     let tabs = textArea.value.match(regex);
+    let endHour = input.value;
 
-    if (!tabs?.length || !input.value) {
-        p.textContent = "Url needs to be valid";
+    if (!tabs?.length) {
+        p.textContent = 'Url needs to be valid';
+        if (!endHour) {
+            let message = 'Please put end time';
+            if (p.textContent.startsWith('Url')) {
+                p.textContent += ' ' + message;
+            } else {
+                p.textContent = message;
+            }
+        }
+
         return
     }
 
     blocker = changeText();
 
-    indexChannel.postMessage({ tabs, blocker, endHour: input.value })
+    indexChannel.postMessage({ tabs, blocker, endHour });
 }
 
 function changeText() {
@@ -99,4 +111,17 @@ function changeText() {
     chrome.storage.session.set({ btn: button.textContent, textAreaStyle: textArea.style.display });
 
     return button.textContent == "Block" ? false : true
+}
+
+function textAreaChange(e) {
+    chrome.storage.session.set({ urls: e.target.value });
+}
+
+async function checkEndTime() {
+    let { endTimeOfBlock } = await chrome.storage.session.get(['endTimeOfBlock']);
+    if (hourToMinutes(endTimeOfBlock)) {
+        endTimeOfBlock = null;
+        chrome.storage.session.set({ endTimeOfBlock });
+        changeText();
+    }
 }

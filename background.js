@@ -64,7 +64,6 @@ async function getUrlAndTitle(tabId) {
     }
     
     if (hourToMinutes(endTimeOfBlock)) {
-        backgroundChannel.postMessage({ reason: 'timeReset' });
         return;
     }
 
